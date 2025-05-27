@@ -1,0 +1,158 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media
+
+# Environment variables and secrets
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env.*
+!.env.example
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Frontend build files
+node_modules/
+static/build/
+static/dist/
+
+# Coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Django migrations for deployment
+# migrations/  # Uncomment if you don't want to track migrations
+
+# Database backups
+*.dump
+*.sql
+*.bak
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Local development settings
+local.py
+local.ini
+
+# Redis dump
+*.rdb
+
+# Django static files collection directory
+staticfiles/
+
+# Temp files
+*.tmp
+*.temp
+tmp/
+
+# Log files
+logs/
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS specific
+._*
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# Virtual environments created by virtualenvwrapper
+.virtualenv
+
+# Python Decouple/DJ-Database-URL
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Personal configuration
+my_settings.py
+local_conf.py
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Uvicorn/Gunicorn pid files
+*.pid
+
+# Generated documentation
+docs/_build/
+docs/api/_build/
+
+# Environment configuration
+.uv/
+.uvdata/
+
