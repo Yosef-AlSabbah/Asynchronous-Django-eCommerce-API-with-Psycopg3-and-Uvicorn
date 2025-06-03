@@ -34,6 +34,7 @@ urlpatterns = [
     path('me/', MeAsyncViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}),
          name='me'),
     path('me/balance/', MeAsyncViewSet.as_view({'get': 'my_balance'}), name='me-balance'),
+    path('me/is-staff/', MeAsyncViewSet.as_view({'get': 'is_staff'}), name='me-is-staff'),
     path('me/account-links/', MeAsyncViewSet.as_view({'get': 'my_account_links'}), name='me-account-links'),
 
     # Router generated URLs

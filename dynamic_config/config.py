@@ -1,14 +1,17 @@
-from typing import Any, Optional, Union
-from django.core.cache import cache
-from django.contrib.auth import get_user_model
-from .models import GlobalConfig, UserConfig
 import logging
+from typing import Any, Optional
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+
+from .models import GlobalConfig, UserConfig
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Cache timeout in seconds (24 hours)
-CACHE_TIMEOUT = 86400
+CACHE_TIMEOUT = getattr(settings, 'CONFIG_CACHE_TIMEOUT', None)
 
 # Special marker to indicate no user config exists
 NO_USER_CONFIG_MARKER = "__NO_USER_CONFIG__"
@@ -77,7 +80,7 @@ class ConfigManager:
         if cached_value is not None:
             return cached_value
 
-        # Cache miss - query database
+        # Cache miss -> query database
         try:
             config = GlobalConfig.objects.get(key=key)
             value = config.get_typed_value()

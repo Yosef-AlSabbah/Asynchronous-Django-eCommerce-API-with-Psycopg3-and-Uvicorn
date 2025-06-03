@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     SIGNATURE_AUTH_SECRET_KEY: str = ''  # Secret key for signature authentication
     INTERNAL_IPS: List[str] = ["localhost"]
+    CONFIG_CACHE_TIMEOUT: int = 3600
 
 # Instantiate the settings object to be used throughout the application
 settings = Settings()

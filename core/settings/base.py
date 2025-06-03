@@ -71,7 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Custom middleware for audit logging
     'auditlog.middleware.AuditLogMiddleware',
-    # 'signature_auth.middleware.SignatureAuthenticationMiddleware',
+    'signature_auth.middleware.SignatureAuthenticationMiddleware',
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -319,3 +319,4 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 
+CONFIG_CACHE_TIMEOUT = settings.CONFIG_CACHE_TIMEOUT

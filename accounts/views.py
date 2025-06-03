@@ -1,28 +1,36 @@
 import logging
-from typing import Final
 
 from adrf.views import APIView
 from adrf.viewsets import ModelViewSet, mixins, GenericViewSet
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiResponse,
+    OpenApiExample,
+)
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import ExpiredTokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import (
     TokenObtainPairView as BaseTokenObtainPairView,
     TokenRefreshView as BaseTokenRefreshView,
-    TokenVerifyView as BaseTokenVerifyView, TokenBlacklistView,
+    TokenVerifyView as BaseTokenVerifyView,
+    TokenBlacklistView,
 )
 
 from accounts.models import WebAccountLink, TelegramAccountLink
 from accounts.serializers import (
     UserSerializer,
     WebAccountLinkSerializer,
-    TelegramAccountLinkSerializer, RefreshTokenSerializer, UserRegistrationSerializer,
+    TelegramAccountLinkSerializer,
+    RefreshTokenSerializer,
+    UserRegistrationSerializer,
 )
 from dynamic_config.services import ConfigService
 
@@ -42,6 +50,7 @@ class UserAsyncViewSet(ModelViewSet):
     - Delete: Users can delete themselves, staff can delete anyone
     - Balance updates: Only admins (superusers)
     """
+
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
@@ -58,8 +67,8 @@ class UserAsyncViewSet(ModelViewSet):
         tags=["User Management"],
         responses={
             200: UserSerializer(many=True),
-            403: OpenApiResponse(description="Only staff members can list users")
-        }
+            403: OpenApiResponse(description="Only staff members can list users"),
+        },
     )
     async def list(self, request, *args, **kwargs):
         """
@@ -76,9 +85,11 @@ class UserAsyncViewSet(ModelViewSet):
         tags=["User Management"],
         responses={
             200: UserSerializer,
-            403: OpenApiResponse(description="Only staff members can retrieve user details"),
-            404: OpenApiResponse(description="User not found")
-        }
+            403: OpenApiResponse(
+                description="Only staff members can retrieve user details"
+            ),
+            404: OpenApiResponse(description="User not found"),
+        },
     )
     async def retrieve(self, request, *args, **kwargs):
         """
@@ -86,7 +97,9 @@ class UserAsyncViewSet(ModelViewSet):
         Regular users should use the 'me' action instead.
         """
         if not request.user.is_staff:
-            raise PermissionDenied("Only staff members can retrieve user details. Use /users/me/ to get your own data.")
+            raise PermissionDenied(
+                "Only staff members can retrieve user details. Use /users/me/ to get your own data."
+            )
 
         return await super().retrieve(request, *args, **kwargs)
 
@@ -116,8 +129,8 @@ class UserAsyncViewSet(ModelViewSet):
             200: UserSerializer,
             400: OpenApiResponse(description="Bad request"),
             403: OpenApiResponse(description="Permission denied"),
-            404: OpenApiResponse(description="User not found")
-        }
+            404: OpenApiResponse(description="User not found"),
+        },
     )
     async def update(self, request, *args, **kwargs):
         """
@@ -131,7 +144,7 @@ class UserAsyncViewSet(ModelViewSet):
             raise PermissionDenied("You can only update your own profile.")
 
         # Check if balance is being updated and user is not admin
-        if 'balance' in request.data and not request.user.is_superuser:
+        if "balance" in request.data and not request.user.is_superuser:
             raise PermissionDenied("Only administrators can update user balance.")
 
         # Call parent's update method and return its result
@@ -146,8 +159,8 @@ class UserAsyncViewSet(ModelViewSet):
             200: UserSerializer,
             400: OpenApiResponse(description="Bad request"),
             403: OpenApiResponse(description="Permission denied"),
-            404: OpenApiResponse(description="User not found")
-        }
+            404: OpenApiResponse(description="User not found"),
+        },
     )
     async def partial_update(self, request, *args, **kwargs):
         """
@@ -161,7 +174,7 @@ class UserAsyncViewSet(ModelViewSet):
             raise PermissionDenied("You can only update your own profile.")
 
         # Check if balance is being updated and user is not admin
-        if 'balance' in request.data and not request.user.is_superuser:
+        if "balance" in request.data and not request.user.is_superuser:
             raise PermissionDenied("Only administrators can update user balance.")
 
         # Call parent's partial_update method and return its result
@@ -174,8 +187,8 @@ class UserAsyncViewSet(ModelViewSet):
         responses={
             204: OpenApiResponse(description="User deleted successfully"),
             403: OpenApiResponse(description="Permission denied"),
-            404: OpenApiResponse(description="User not found")
-        }
+            404: OpenApiResponse(description="User not found"),
+        },
     )
     async def destroy(self, request, *args, **kwargs):
         """
@@ -189,14 +202,21 @@ class UserAsyncViewSet(ModelViewSet):
 
         return await super().destroy(request, *args, **kwargs)
 
-    @extend_schema(summary="Create a new user",
-                   description="This endpoint is disabled. Use dedicated registration endpoint instead.",
-                   tags=["User Management"],
-                   responses={403: OpenApiResponse(description="User creation through this endpoint is disabled")})
+    @extend_schema(
+        summary="Create a new user",
+        description="This endpoint is disabled. Use dedicated registration endpoint instead.",
+        tags=["User Management"],
+        responses={
+            403: OpenApiResponse(
+                description="User creation through this endpoint is disabled"
+            )
+        },
+    )
     async def create(self, request, *args, **kwargs):
-        """ User creation is disabled through this endpoint. Use dedicated registration endpoint instead. """
+        """User creation is disabled through this endpoint. Use dedicated registration endpoint instead."""
         raise PermissionDenied(
-            "User creation through this endpoint is disabled. " "Please use the dedicated registration endpoint."
+            "User creation through this endpoint is disabled. "
+            "Please use the dedicated registration endpoint."
         )
 
     async def perform_create(self, serializer):
@@ -223,16 +243,16 @@ class UserAsyncViewSet(ModelViewSet):
         tags=["Payments"],
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'balance': {'type': 'string', 'description': 'User balance'}
-                }
+                "type": "object",
+                "properties": {
+                    "balance": {"type": "string", "description": "User balance"}
+                },
             },
             403: OpenApiResponse(description="Permission denied"),
-            404: OpenApiResponse(description="User not found")
-        }
+            404: OpenApiResponse(description="User not found"),
+        },
     )
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     async def balance(self, request, pk=None):
         """
         Get user's current balance.
@@ -244,32 +264,34 @@ class UserAsyncViewSet(ModelViewSet):
         if not request.user.is_staff and user != request.user:
             raise PermissionDenied("You can only view your own balance.")
 
-        return Response({'balance': str(user.balance)})
+        return Response({"balance": str(user.balance)})
 
     @extend_schema(
         summary="Update user balance (Admin only)",
         description="Update a user's balance. Only administrators can perform this action.",
         tags=["Payments"],
         request={
-            'type': 'object',
-            'properties': {
-                'balance': {'type': 'string', 'description': 'New balance value'}
+            "type": "object",
+            "properties": {
+                "balance": {"type": "string", "description": "New balance value"}
             },
-            'required': ['balance']
+            "required": ["balance"],
         },
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'balance': {'type': 'string', 'description': 'Updated balance'}
-                }
+                "type": "object",
+                "properties": {
+                    "balance": {"type": "string", "description": "Updated balance"}
+                },
             },
             400: OpenApiResponse(description="Bad request"),
-            403: OpenApiResponse(description="Only administrators can update user balance"),
-            404: OpenApiResponse(description="User not found")
-        }
+            403: OpenApiResponse(
+                description="Only administrators can update user balance"
+            ),
+            404: OpenApiResponse(description="User not found"),
+        },
     )
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=["patch"])
     async def update_balance(self, request, pk=None):
         """
         Update user's balance. Only admins can do this.
@@ -278,18 +300,18 @@ class UserAsyncViewSet(ModelViewSet):
             raise PermissionDenied("Only administrators can update user balance.")
 
         user = await self.get_object()
-        balance = request.data.get('balance')
+        balance = request.data.get("balance")
 
         if balance is None:
             return Response(
-                {'error': 'balance field is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "balance field is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         user.balance = balance
-        await sync_to_async(user.save)(update_fields=['balance'])
+        await sync_to_async(user.save)(update_fields=["balance"])
 
-        return Response({'balance': str(user.balance)})
+        return Response({"balance": str(user.balance)})
 
     @extend_schema(
         summary="Get user account links",
@@ -297,23 +319,17 @@ class UserAsyncViewSet(ModelViewSet):
         tags=["User Management"],
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'web_links': {
-                        'type': 'array',
-                        'items': {'type': 'object'}
-                    },
-                    'telegram_links': {
-                        'type': 'array',
-                        'items': {'type': 'object'}
-                    }
-                }
+                "type": "object",
+                "properties": {
+                    "web_links": {"type": "array", "items": {"type": "object"}},
+                    "telegram_links": {"type": "array", "items": {"type": "object"}},
+                },
             },
             403: OpenApiResponse(description="Permission denied"),
-            404: OpenApiResponse(description="User not found")
-        }
+            404: OpenApiResponse(description="User not found"),
+        },
     )
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     async def account_links(self, request, pk=None):
         """
         Get all account links for a user.
@@ -326,29 +342,27 @@ class UserAsyncViewSet(ModelViewSet):
             raise PermissionDenied("You can only view your own account links.")
 
         # Get web account links
-        web_links = await sync_to_async(list)(
-            user.webaccountlink_links.all()
-        )
+        web_links = await sync_to_async(list)(user.webaccountlink_links.all())
 
         # Get telegram account links
-        telegram_links = await sync_to_async(list)(
-            user.telegramaccountlink_links.all()
-        )
+        telegram_links = await sync_to_async(list)(user.telegramaccountlink_links.all())
 
         web_serializer = WebAccountLinkSerializer(web_links, many=True)
         telegram_serializer = TelegramAccountLinkSerializer(telegram_links, many=True)
 
-        return Response({
-            'web_links': web_serializer.data,
-            'telegram_links': telegram_serializer.data
-        })
+        return Response(
+            {
+                "web_links": web_serializer.data,
+                "telegram_links": telegram_serializer.data,
+            }
+        )
 
 
 class MeAsyncViewSet(
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
-    GenericViewSet
+    GenericViewSet,
 ):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -362,8 +376,8 @@ class MeAsyncViewSet(
         tags=["User Management"],
         responses={
             200: UserSerializer,
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def retrieve(self, request, *args, **kwargs):
         serializer = await sync_to_async(self.get_serializer)(request.user)
@@ -377,7 +391,7 @@ class MeAsyncViewSet(
         responses={
             200: UserSerializer,
             400: OpenApiResponse(description="Bad request"),
-            401: OpenApiResponse(description="Authentication required")
+            401: OpenApiResponse(description="Authentication required"),
         },
         examples=[
             OpenApiExample(
@@ -385,21 +399,17 @@ class MeAsyncViewSet(
                 value={
                     "first_name": "First Name",
                     "last_name": "Second Name",
-                    "phone": "+972 50-000-0000"
+                    "phone": "+972 50-000-0000",
                 },
-                request_only=True
+                request_only=True,
             )
-        ]
+        ],
     )
     async def update(self, request, *args, **kwargs):
         request_data = request.data.copy()
-        if 'balance' in request_data:
-            request_data.pop('balance')
-        serializer = self.get_serializer(
-            request.user,
-            data=request_data,
-            partial=False
-        )
+        if "balance" in request_data:
+            request_data.pop("balance")
+        serializer = self.get_serializer(request.user, data=request_data, partial=False)
         valid = await sync_to_async(serializer.is_valid)()
         if valid:
             await sync_to_async(serializer.save)()
@@ -415,18 +425,14 @@ class MeAsyncViewSet(
         responses={
             200: UserSerializer,
             400: OpenApiResponse(description="Bad request"),
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def partial_update(self, request, *args, **kwargs):
         request_data = request.data.copy()
-        if 'balance' in request_data:
-            request_data.pop('balance')
-        serializer = self.get_serializer(
-            request.user,
-            data=request_data,
-            partial=True
-        )
+        if "balance" in request_data:
+            request_data.pop("balance")
+        serializer = self.get_serializer(request.user, data=request_data, partial=True)
         valid = await sync_to_async(serializer.is_valid)()
         if valid:
             await sync_to_async(serializer.save)()
@@ -440,17 +446,43 @@ class MeAsyncViewSet(
         tags=["Payments"],
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'balance': {'type': 'string', 'description': 'User balance'}
-                }
+                "type": "object",
+                "properties": {
+                    "balance": {"type": "string", "description": "User balance"}
+                },
             },
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     async def my_balance(self, request):
-        return Response({'balance': str(request.user.balance)})
+        return Response({"balance": str(request.user.balance)})
+
+    @extend_schema(
+        summary="Check if current user is staff",
+        description="Check if the authenticated user has staff privileges.",
+        tags=["User Management"],
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "is_staff": {"type": "boolean", "description": "Whether the user has staff privileges"}
+                },
+            },
+            401: OpenApiResponse(description="Authentication required"),
+        },
+    )
+    @action(detail=False, methods=["get"], permission_classes=[AllowAny])
+    async def is_staff(self, request):
+        """
+        Check if the current user is a staff member.
+        Public endpoint that doesn't require authentication.
+        """
+        # Handle anonymous users safely
+        if not request.user or request.user.is_anonymous:
+            return Response({"is_staff": False})
+
+        return Response({"is_staff": request.user.is_staff})
 
     @extend_schema(
         summary="Get current user account links",
@@ -458,22 +490,16 @@ class MeAsyncViewSet(
         tags=["User Management"],
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'web_links': {
-                        'type': 'array',
-                        'items': {'type': 'object'}
-                    },
-                    'telegram_links': {
-                        'type': 'array',
-                        'items': {'type': 'object'}
-                    }
-                }
+                "type": "object",
+                "properties": {
+                    "web_links": {"type": "array", "items": {"type": "object"}},
+                    "telegram_links": {"type": "array", "items": {"type": "object"}},
+                },
             },
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     async def my_account_links(self, request):
         """
         Get current user's own account links.
@@ -481,22 +507,20 @@ class MeAsyncViewSet(
         user = request.user
 
         # Get web account links
-        web_links = await sync_to_async(list)(
-            user.webaccountlink_links.all()
-        )
+        web_links = await sync_to_async(list)(user.webaccountlink_links.all())
 
         # Get telegram account links
-        telegram_links = await sync_to_async(list)(
-            user.telegramaccountlink_links.all()
-        )
+        telegram_links = await sync_to_async(list)(user.telegramaccountlink_links.all())
 
         web_serializer = WebAccountLinkSerializer(web_links, many=True)
         telegram_serializer = TelegramAccountLinkSerializer(telegram_links, many=True)
 
-        return Response({
-            'web_links': web_serializer.data,
-            'telegram_links': telegram_serializer.data
-        })
+        return Response(
+            {
+                "web_links": web_serializer.data,
+                "telegram_links": telegram_serializer.data,
+            }
+        )
 
 
 class WebAccountLinkAsyncViewSet(ModelViewSet):
@@ -505,6 +529,7 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
 
     Provides CRUD operations for web account links.
     """
+
     serializer_class = WebAccountLinkSerializer
     permission_classes = [IsAuthenticated]
 
@@ -540,8 +565,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             201: WebAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def create(self, request, *args, **kwargs):
         return await super().create(request, *args, **kwargs)
@@ -552,8 +577,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         tags=["Account Linking"],
         responses={
             200: WebAccountLinkSerializer(many=True),
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def list(self, request, *args, **kwargs):
         return await super().list(request, *args, **kwargs)
@@ -565,8 +590,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             200: WebAccountLinkSerializer,
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def retrieve(self, request, *args, **kwargs):
         return await super().retrieve(request, *args, **kwargs)
@@ -580,8 +605,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
             200: WebAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def update(self, request, *args, **kwargs):
         return await super().update(request, *args, **kwargs)
@@ -595,8 +620,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
             200: WebAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def partial_update(self, request, *args, **kwargs):
         return await super().partial_update(request, *args, **kwargs)
@@ -608,8 +633,8 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             204: OpenApiResponse(description="No content"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def destroy(self, request, *args, **kwargs):
         return await super().destroy(request, *args, **kwargs)
@@ -620,9 +645,14 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         Ensure users can only create links for themselves.
         """
         # Ensure the user can only create links for themselves
-        if 'user' in serializer.validated_data and serializer.validated_data['user'] != self.request.user:
+        if (
+                "user" in serializer.validated_data
+                and serializer.validated_data["user"] != self.request.user
+        ):
             if not self.request.user.is_staff:
-                raise PermissionDenied("You can only create account links for yourself.")
+                raise PermissionDenied(
+                    "You can only create account links for yourself."
+                )
         await sync_to_async(serializer.save)()
 
     async def perform_update(self, serializer):
@@ -635,7 +665,10 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         if instance.user != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied("You can only update your own account links.")
         # Prevent changing the user
-        if 'user' in serializer.validated_data and serializer.validated_data['user'] != instance.user:
+        if (
+                "user" in serializer.validated_data
+                and serializer.validated_data["user"] != instance.user
+        ):
             if not self.request.user.is_staff:
                 raise PermissionDenied("You cannot change the user of an account link.")
         await sync_to_async(serializer.save)()
@@ -652,29 +685,29 @@ class WebAccountLinkAsyncViewSet(ModelViewSet):
         tags=["Account Linking"],
         parameters=[
             OpenApiParameter(
-                name='user_id',
+                name="user_id",
                 description="User ID to filter by",
                 required=True,
                 type=int,
-                location='query'
+                location="query",
             )
         ],
         responses={
             200: WebAccountLinkSerializer(many=True),
-            400: OpenApiResponse(description="user_id parameter is required")
-        }
+            400: OpenApiResponse(description="user_id parameter is required"),
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     async def by_user(self, request):
         """
         Get web account links for a specific user.
         Regular users can only query their own links, staff can query any user's links.
         """
-        user_id = request.query_params.get('user_id')
+        user_id = request.query_params.get("user_id")
         if not user_id:
             return Response(
-                {'error': 'user_id parameter is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "user_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Permission check
@@ -695,6 +728,7 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
 
     Provides CRUD operations for telegram account links.
     """
+
     serializer_class = TelegramAccountLinkSerializer
     permission_classes = [IsAuthenticated]
 
@@ -726,8 +760,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             201: TelegramAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def create(self, request, *args, **kwargs):
         return await super().create(request, *args, **kwargs)
@@ -738,8 +772,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         tags=["Account Linking"],
         responses={
             200: TelegramAccountLinkSerializer(many=True),
-            401: OpenApiResponse(description="Authentication required")
-        }
+            401: OpenApiResponse(description="Authentication required"),
+        },
     )
     async def list(self, request, *args, **kwargs):
         return await super().list(request, *args, **kwargs)
@@ -751,8 +785,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             200: TelegramAccountLinkSerializer,
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def retrieve(self, request, *args, **kwargs):
         return await super().retrieve(request, *args, **kwargs)
@@ -766,8 +800,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
             200: TelegramAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def update(self, request, *args, **kwargs):
         return await super().update(request, *args, **kwargs)
@@ -781,8 +815,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
             200: TelegramAccountLinkSerializer,
             400: OpenApiResponse(description="Bad request"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def partial_update(self, request, *args, **kwargs):
         return await super().partial_update(request, *args, **kwargs)
@@ -794,8 +828,8 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         responses={
             204: OpenApiResponse(description="No content"),
             401: OpenApiResponse(description="Authentication required"),
-            404: OpenApiResponse(description="Not found")
-        }
+            404: OpenApiResponse(description="Not found"),
+        },
     )
     async def destroy(self, request, *args, **kwargs):
         return await super().destroy(request, *args, **kwargs)
@@ -824,28 +858,28 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         tags=["Account Linking"],
         parameters=[
             OpenApiParameter(
-                name='user_id',
+                name="user_id",
                 description="User ID to filter by",
                 required=True,
                 type=int,
-                location='query'
+                location="query",
             )
         ],
         responses={
             200: TelegramAccountLinkSerializer(many=True),
-            400: OpenApiResponse(description="user_id parameter is required")
-        }
+            400: OpenApiResponse(description="user_id parameter is required"),
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     async def by_user(self, request):
         """
         Get telegram account links for a specific user.
         """
-        user_id = request.query_params.get('user_id')
+        user_id = request.query_params.get("user_id")
         if not user_id:
             return Response(
-                {'error': 'user_id parameter is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "user_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         links = await sync_to_async(list)(
@@ -861,42 +895,41 @@ class TelegramAccountLinkAsyncViewSet(ModelViewSet):
         tags=["Account Linking"],
         parameters=[
             OpenApiParameter(
-                name='telegram_id',
+                name="telegram_id",
                 description="Telegram ID to search for",
                 required=True,
                 type=str,
-                location='query'
+                location="query",
             )
         ],
         responses={
             200: TelegramAccountLinkSerializer,
             400: OpenApiResponse(description="telegram_id parameter is required"),
-            404: OpenApiResponse(description="Account link not found")
-        }
+            404: OpenApiResponse(description="Account link not found"),
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     async def by_telegram_id(self, request):
         """
         Get account link by telegram ID.
         """
-        telegram_id = request.query_params.get('telegram_id')
+        telegram_id = request.query_params.get("telegram_id")
         if not telegram_id:
             return Response(
-                {'error': 'telegram_id parameter is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "telegram_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            link = await sync_to_async(
-                TelegramAccountLink.objects.get
-            )(telegram_id=telegram_id)
+            link = await sync_to_async(TelegramAccountLink.objects.get)(
+                telegram_id=telegram_id
+            )
 
             serializer = self.get_serializer(link)
             return Response(serializer.data)
         except TelegramAccountLink.DoesNotExist:
             return Response(
-                {'error': 'Account link not found'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Account link not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
 
@@ -905,6 +938,7 @@ class UserRegistrationView(APIView):
     Async view for user registration.
     Allows new users to create accounts with username, password, and phone number.
     """
+
     permission_classes = [AllowAny]
 
     @extend_schema(
@@ -914,18 +948,21 @@ class UserRegistrationView(APIView):
         request=UserRegistrationSerializer,
         responses={
             201: UserSerializer,
-            400: OpenApiResponse(description="Bad request - validation error")
-        }
+            400: OpenApiResponse(description="Bad request - validation error"),
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
-            response = super().post(request, *args, **kwargs)
-            return Response({
-                "message": "Token successfully obtained",
-                "data": response.data
-            }, status=response.status_code)
+            serializer = UserRegistrationSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            user_data = UserSerializer(user).data
+            return Response(
+                {"message": "User successfully registered", "data": user_data},
+                status=status.HTTP_201_CREATED,
+            )
         except Exception as e:
-            logger.error(f"Error during token obtain: {e}", exc_info=True)
+            logger.error(f"Error during user registration: {e}", exc_info=True)
             raise
 
 
@@ -941,15 +978,18 @@ class TokenRefreshView(BaseTokenRefreshView):
         responses={
             200: OpenApiResponse(description="Access token successfully refreshed."),
             400: OpenApiResponse(description="Invalid refresh token."),
-        }
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
             response = super().post(request, *args, **kwargs)
-            return Response({
-                "message": "Access token successfully refreshed",
-                "data": response.data
-            }, status=response.status_code)
+            return Response(
+                {
+                    "message": "Access token successfully refreshed",
+                    "data": response.data,
+                },
+                status=response.status_code,
+            )
         except Exception as e:
             logger.error(f"Error during token refresh: {e}", exc_info=True)
             raise
@@ -967,15 +1007,15 @@ class TokenVerifyView(BaseTokenVerifyView):
         responses={
             200: OpenApiResponse(description="Token is valid."),
             401: OpenApiResponse(description="Token is invalid or expired."),
-        }
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
             response = super().post(request, *args, **kwargs)
-            return Response({
-                "message": "Token is valid",
-                "data": response.data
-            }, status=response.status_code)
+            return Response(
+                {"message": "Token is valid", "data": response.data},
+                status=response.status_code,
+            )
         except Exception as e:
             logger.error(f"Error during token verification: {e}", exc_info=True)
             raise
@@ -985,6 +1025,7 @@ class TokenDestroyView(TokenBlacklistView):
     """
     Log out the user by blacklisting their refresh token.
     """
+
     serializer_class = RefreshTokenSerializer
 
     @extend_schema(
@@ -1004,12 +1045,14 @@ class TokenDestroyView(TokenBlacklistView):
             refresh_token = serializer.validated_data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
-            return Response({
-                "message": "Successfully logged out"
-            }, status=status.HTTP_205_RESET_CONTENT)
+            return Response(
+                {"message": "Successfully logged out"},
+                status=status.HTTP_205_RESET_CONTENT,
+            )
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
             raise
+
 
 class TokenObtainPairView(BaseTokenObtainPairView):
     """
@@ -1024,55 +1067,63 @@ class TokenObtainPairView(BaseTokenObtainPairView):
         responses={
             200: OpenApiResponse(description="Token successfully obtained."),
             400: OpenApiResponse(description="Invalid credentials."),
-        }
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
             # First validate credentials and get the token response
             response = super().post(request, *args, **kwargs)
 
-            # Extract user from token instead of additional database query
+            # Extract user from token
             from rest_framework_simplejwt.tokens import AccessToken
-            token_data = response.data.get('access')
+            token_data = response.data.get("access")
             token = AccessToken(token_data)
-            user_id = token.payload.get('user_id')
+            user_id = token.payload.get("user_id")
 
-            # Get max devices from config (without extra query if cached)
-            max_active_devices = ConfigService.get('MAX_ACTIVE_DEVICES', default=2)
+            # Get max devices from config
+            max_active_devices = ConfigService.get("MAX_ACTIVE_DEVICES", default=2)
 
             # Only check token limit if we have the user_id
             if user_id:
-                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+                from rest_framework_simplejwt.token_blacklist.models import (
+                    OutstandingToken, BlacklistedToken
+                )
+                from django.utils import timezone
 
-                # Single efficient query to count active tokens
-                active_tokens_count = OutstandingToken.objects.filter(
+                # Count only non-blacklisted and non-expired tokens
+                active_tokens = OutstandingToken.objects.filter(
                     user_id=user_id,
-                    blacklistedtoken__isnull=True
-                ).count()
+                    blacklistedtoken__isnull=True,
+                    expires_at__gt=timezone.now()
+                )
+                active_tokens_count = active_tokens.count()
 
-                # Prepare response data
                 response_data = {
                     "message": "Token successfully obtained",
-                    "data": response.data
+                    "data": response.data,
                 }
 
                 # If the user already has too many active tokens
-                if active_tokens_count > max_active_devices:
-                    # Get and blacklist the oldest token in a single operation
-                    oldest_token = OutstandingToken.objects.filter(
-                        user_id=user_id,
-                        blacklistedtoken__isnull=True
-                    ).order_by('created_at').first()
+                if active_tokens_count >= max_active_devices:
+                    oldest_token = active_tokens.order_by("created_at").first()
 
                     if oldest_token:
-                        RefreshToken(oldest_token.token).blacklist()
-                        logger.info(f"Blacklisted oldest token for user ID {user_id} due to device limit")
-                        response_data[
-                            "device_limit_info"] = f"You have reached the maximum number of devices ({max_active_devices}). You have been logged out from your oldest device."
+                        try:
+                            # Try to blacklist the token normally
+                            RefreshToken(oldest_token.token).blacklist()
+                            logger.info(f"Blacklisted oldest token for user ID {user_id}")
+                        except ExpiredTokenError:
+                            # If token is expired, mark it as blacklisted directly
+                            BlacklistedToken.objects.get_or_create(token=oldest_token)
+                            logger.info(f"Marked expired token as blacklisted for user ID {user_id}")
+
+                        response_data["device_limit_info"] = (
+                            f"You have reached the maximum number of devices ({max_active_devices}). "
+                            f"You have been logged out from your oldest device."
+                        )
 
                 return Response(response_data, status=response.status_code)
 
-            # Fallback for an unexpected case where user_id is not in token
             return response
 
         except Exception as e:

@@ -2,6 +2,7 @@ from adrf import serializers as adrf_serializers
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers as drf_serializers
+from rest_framework.exceptions import ValidationError
 
 from .models import WebAccountLink, TelegramAccountLink
 
@@ -44,6 +45,28 @@ class UserRegistrationSerializer(adrf_serializers.ModelSerializer):
             raise drf_serializers.ValidationError(_("Password must be at least 8 characters long."))
 
         return value
+
+    def validate_phone(self, value):
+        """
+        Custom phone validation to ensure it is unique and properly formatted.
+        """
+        from accounts.utils import validate_phone, normalize_and_validate_phone
+
+        try:
+            # First validate the basic format
+            validate_phone(value)
+
+            # Then normalize to the standard format
+            normalized_value = normalize_and_validate_phone(value)
+
+            # Check if phone number is already in use
+            if User.objects.filter(phone=normalized_value).exists():
+                raise drf_serializers.ValidationError(_("A user with this phone number already exists."))
+
+            return normalized_value
+        except ValidationError as e:
+            # Handle validation errors from the utility functions
+            raise drf_serializers.ValidationError(str(e))
 
     def create(self, validated_data):
         """
