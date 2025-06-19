@@ -32,10 +32,9 @@ class ProductAdmin(admin.ModelAdmin):
                     'approval_status', 'created_at']
     list_filter = ['category', 'created_at', 'owner']
     search_fields = ['name', 'short_description', 'owner__username']
-    readonly_fields = ['created_at', 'updated_at', 'slug']
+    readonly_fields = ['created_at', 'updated_at', 'slug', 'thumbnail_preview']
     list_display_links = ['name', 'thumbnail_preview']
     list_select_related = ['category', 'owner']
-    prepopulated_fields = {'slug': ('name',)}
     inlines = [ProductStatusInline]
 
     fieldsets = (
@@ -78,13 +77,3 @@ class ProductAdmin(admin.ModelAdmin):
                            status.get_status_display())
 
     approval_status.short_description = _('Status')
-
-
-@admin.register(ProductStatus)
-class ProductStatusAdmin(admin.ModelAdmin):
-    list_display = ['product', 'status', 'reviewer', 'created_at']
-    list_filter = ['status', 'reviewer', 'created_at']
-    search_fields = ['product__name', 'notes', 'reviewer__username']
-    readonly_fields = ['created_at']
-    raw_id_fields = ['product', 'reviewer']
-    date_hierarchy = 'created_at'

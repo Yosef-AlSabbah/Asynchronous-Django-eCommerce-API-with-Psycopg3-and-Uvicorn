@@ -3,6 +3,7 @@ import uuid
 
 from PIL import Image
 from django.conf import settings
+from django.contrib.postgres.search import TrigramSimilarity
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
@@ -41,3 +42,18 @@ def product_image_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f"{uuid.uuid4()}.{ext}"
     return os.path.join('products', str(instance.product.id), filename)
+
+
+def search_products(queryset, search_term):
+    """
+    Centralized search function to filter products by name and description similarity.
+    """
+    if search_term:
+        return queryset.annotate(
+            name_similarity=TrigramSimilarity('name', search_term),
+            description_similarity=TrigramSimilarity('short_description', search_term),
+        ).filter(
+            name_similarity__gt=0.1,
+            description_similarity__gt=0.05,
+        ).order_by('-name_similarity', '-description_similarity')
+    return queryset

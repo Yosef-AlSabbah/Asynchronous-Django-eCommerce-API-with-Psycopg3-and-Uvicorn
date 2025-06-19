@@ -71,7 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Custom middleware for audit logging
     'auditlog.middleware.AuditLogMiddleware',
-    'signature_auth.middleware.SignatureAuthenticationMiddleware',
+    # 'signature_auth.middleware.SignatureAuthenticationMiddleware',
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -222,7 +222,7 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-#      ╭──────────────────────────────────────────────────────────╮
+#      ╭────────────────────────────���─────────────────────────────╮
 #      │       Configuration for JWT Authentication Tokens        │
 #      ╰──────────────────────────────────────────────────────────╯
 # ━━ THIS SECTION SETS THE DURATION FOR BOTH ACCESS AND REFRESH TOKENS IN THE APPLICATION, USING THE SIMPLE_JWT SETTINGS. ━━
@@ -265,9 +265,14 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API for eCommerce platform with asynchronous support',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.contrib.adrf.SpectacularADRFSchema', # Add this line for ADRF compatibility
     'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
     'COMPONENT_SPLIT_REQUEST': True,
     'TAGS': [
+        {
+            'name': 'Product Status',
+            'description': 'Endpoints for managing product statuses.'
+        },
         {
             'name': 'User Management',
             'description': 'Endpoints for managing user profiles, accounts, and related data.'
@@ -320,3 +325,5 @@ SPECTACULAR_SETTINGS = {
 }
 
 CONFIG_CACHE_TIMEOUT = settings.CONFIG_CACHE_TIMEOUT
+
+GENERIC_CACHE_TIMEOUT = settings.GENERIC_CACHE_TIMEOUT

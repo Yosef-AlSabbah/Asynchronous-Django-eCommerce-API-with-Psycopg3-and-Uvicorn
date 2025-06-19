@@ -14,6 +14,7 @@ dependencies = [
     "django-taggit>=6.1.0",
     "djangorestframework-camel-case>=1.4.2",
     "djangorestframework-simplejwt>=5.5.0",
+    "drf-nested-routers>=0.94.2",
     "drf-spectacular>=0.28.0",
     "pillow>=11.2.1",
     "psycopg[async,binary]>=3.2.9",

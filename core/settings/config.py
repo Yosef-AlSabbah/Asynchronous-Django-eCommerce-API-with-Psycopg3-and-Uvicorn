@@ -34,5 +34,8 @@ class Settings(BaseSettings):
     INTERNAL_IPS: List[str] = ["localhost"]
     CONFIG_CACHE_TIMEOUT: int = 3600
 
+    GENERIC_CACHE_TIMEOUT: int = 900
+
+
 # Instantiate the settings object to be used throughout the application
 settings = Settings()

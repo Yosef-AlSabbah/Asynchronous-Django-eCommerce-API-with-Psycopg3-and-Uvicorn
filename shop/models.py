@@ -46,7 +46,8 @@ class Category(models.Model):
         try:
             self.slug = slugify(self.name)
             super().save(*args, **kwargs)
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             # Handle duplicate name (slug) error here
             raise IntegrityError(_("A category with this name already exists."))
 
@@ -73,6 +74,7 @@ class Product(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_approved = models.BooleanField(default=False)
 
     # User who submitted the product
     owner = models.ForeignKey(
@@ -84,12 +86,13 @@ class Product(models.Model):
     thumbnail = models.ImageField(
         upload_to=product_image_path,
         validators=[validate_image],
-        help_text=_("Upload a product image (JPEG, PNG, max 1MB)")
+        help_text=_("Upload a product image (JPEG, PNG, max 1MB)"),
+        blank=True,
     )
 
     tags = TaggableManager(blank=True)
 
-    auditlog = AuditLogRecords()  # Enable audit logging
+    auditlog = AuditLogRecords(exclude_fields=['thumbnail'])  # Enable audit logging
 
     class Meta:
         verbose_name = _("Product")
@@ -137,21 +140,6 @@ class Product(models.Model):
     def current_approval(self) -> 'ProductStatus | None':
         """Get the latest approval status, or None if never reviewed"""
         return self.approval_history.order_by('-created_at').first()
-
-    @property
-    def is_approved(self) -> bool:
-        """
-            Checks if the product is currently approved.
-
-            Returns:
-                bool: True if the latest approval status is APPROVED, False if rejected or never reviewed.
-
-            Notes:
-                - If there is no approval history, returns False.
-                - Relies on the most recent entry in the approval history.
-            """
-        latest = self.current_approval
-        return latest.status == ProductStatus.StatusChoices.APPROVED
 
 
 class ProductStatus(models.Model):

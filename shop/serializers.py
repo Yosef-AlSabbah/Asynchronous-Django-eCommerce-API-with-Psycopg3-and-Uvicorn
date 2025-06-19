@@ -18,21 +18,28 @@ class CategorySerializer(serializers.ModelSerializer):
         read_only_fields = ["slug"]
 
 
-class ProductApprovalSerializer(serializers.ModelSerializer):
-    """Serializer for ProductApproval model"""
+class ProductStatusSerializer(serializers.ModelSerializer):
+    """Serializer for ProductStatus model"""
 
+    reviewer = serializers.HiddenField(default=serializers.CurrentUserDefault())
     reviewer_name = serializers.ReadOnlyField(source="reviewer.username")
+    product_name = serializers.ReadOnlyField(source="product.name")
+    status = serializers.ChoiceField(
+        choices=ProductStatus.StatusChoices.choices,
+    )
 
     class Meta:
         model = ProductStatus
         fields = [
             "id",
-            "status",
-            "notes",
+            'product',
+            "product_name",
+            "reviewer",
             "reviewer_name",
+            "status",
             "created_at",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = ["created_at", "product_name"]
 
 
 class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -52,7 +59,8 @@ class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
     # Method field that retrieves the current product approval status
     approval_status = serializers.SerializerMethodField()
     # Read-only field that shows the username of the product owner
-    user_username = serializers.ReadOnlyField(source="user.username")
+    owner_username = serializers.ReadOnlyField(source="owner.username")
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Product
@@ -62,9 +70,10 @@ class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
             "slug",
             "short_description",
             "price",
+            "category",
             "category_name",
             "owner",
-            "user_username",
+            "owner_username",
             "tags",
             "thumbnail",
             "approval_status",
@@ -73,7 +82,6 @@ class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
         ]
         read_only_fields = [
             "slug",
-            "owner",
             "created_at",
             "updated_at",
             "approval_status",
@@ -85,14 +93,3 @@ class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
         if not latest:
             return "pending"
         return latest.status
-
-    def get_primary_image(self, obj):
-        """Get the primary image for the product"""
-        primary = obj.primary_image
-        if primary:
-            request = self.context.get("request")
-            if request and hasattr(primary.image, "url"):
-                return request.build_absolute_uri(primary.image.url)
-            elif hasattr(primary.image, "url"):
-                return primary.image.url
-        return None

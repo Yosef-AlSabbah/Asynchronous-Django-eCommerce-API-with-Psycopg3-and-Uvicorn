@@ -12,7 +12,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import ExpiredTokenError
@@ -1126,6 +1126,12 @@ class TokenObtainPairView(BaseTokenObtainPairView):
 
             return response
 
+        except AuthenticationFailed as e:
+            # Handle invalid credentials
+            return Response(
+                {"message": "No active account found with the given credentials"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         except Exception as e:
             logger.error(f"Error during token obtain: {e}", exc_info=True)
             raise
